@@ -1,64 +1,61 @@
 #!/bin/bash
 
-# 确保root用户运行 Ensure the script is run as root
+# 检查是否以 root 权限运行
 if [ "$(id -u)" != "0" ]; then
-    echo "This script must be run as root" 1>&2
-    exit 1
+   echo "此脚本需要 root 权限运行。请使用 sudo 或以 root 用户运行。"
+   exit 1
 fi
 
-# 所有函数需要在选项之前声明
-
-
-# 放开端口函数 Define a function to open ports
-open_port() {
-    # 安装iptables持久化文件
+# 安装 iptables-persistent
+if ! dpkg -s iptables-persistent >/dev/null 2>&1; then
     apt-get update
     apt-get install -y iptables-persistent
+fi
+
+# 定义一个函数来添加规则
+add_rules() {
+    local protocol=$1
+    local dport=$2
+    iptables -A INPUT -p "$protocol" --dport "$dport" -j ACCEPT
+    ip6tables -A INPUT -p "$protocol" --dport "$dport" -j ACCEPT
+}
+
+# 放开端口函数
+open_port() {
     echo "请输入要放开的端口号: "
     read port
 
     # 检查输入是否为单个端口或连续端口范围
     if [[ "$port" =~ ^[0-9]+$ ]]; then
-        # 单个端口
-        sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
-        sudo iptables -A INPUT -p udp --dport $port -j ACCEPT
-        sudo ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
-        sudo ip6tables -A INPUT -p udp --dport $port -j ACCEPT
-    elif [[ "$port" =~ ^[0-9]+:[0-9]+$ ]]; then
-        # 端口范围
-        IFS=':' read -ra RANGE <<< "$port"
-        for ((i=${RANGE[0]}; i<=${RANGE[1]}; i++)); do
-            sudo iptables -A INPUT -p tcp --dport $i -j ACCEPT
-            sudo iptables -A INPUT -p udp --dport $i -j ACCEPT
-            sudo ip6tables -A INPUT -p tcp --dport $i -j ACCEPT
-            sudo ip6tables -A INPUT -p udp --dport $i -j ACCEPT
+        add_rules tcp $port
+        add_rules udp $port
+    elif [[ "$port" =~ ^([0-9]+):([0-9]+)$ ]] && [[ "${BASH_REMATCH[1]}" -lt "${BASH_REMATCH[2]}" ]]; then
+        for ((i=${BASH_REMATCH[1]}; i<=${BASH_REMATCH[2]}; i++)); do
+            add_rules tcp $i
+            add_rules udp $i
         done
     elif [[ "$port" =~ ^[0-9]+([[:space:]]+[0-9]+)*$ ]]; then
-    # 用空格分割的多个端口
-    # 使用 tr 替换所有连续的空白字符为单个空格
-    port=$(echo $port | tr -s '[:space:]' ' ')
-    for p in $port; do
-        sudo iptables -A INPUT -p tcp --dport $p -j ACCEPT
-        sudo iptables -A INPUT -p udp --dport $p -j ACCEPT
-        sudo ip6tables -A INPUT -p tcp --dport $p -j ACCEPT
-        sudo ip6tables -A INPUT -p udp --dport $p -j ACCEPT
-    done
-else
-    echo "输入格式错误，请重新输入。"
-    return 1
-fi
-
+        port=$(echo $port | tr -s '[:space:]' ' ')
+        for p in $port; do
+            add_rules tcp $p
+            add_rules udp $p
+        done
+    else
+        echo "输入格式错误，请重新输入。"
+        return 1
+    fi
 
     # 保存规则
-    sudo iptables-save > /etc/iptables/rules.v4
-    sudo ip6tables-save > /etc/iptables/rules.v6
+    iptables-save > /etc/iptables/rules.v4
+    ip6tables-save > /etc/iptables/rules.v6
     echo "端口 $port 已放开，并设置为开机自动生效。"
+
+    # 处理重复规则
+    iptables-save | grep -v "^#" | sort | uniq -u | iptables-restore
+    echo "重复的 iptables 规则已删除，仅保留了优先度最高的规则。"
 }
 
-
-
-
-# 显示菜单 Display menu
+# 显示菜单
 show_menu() {
     echo "1. 选项一"
     echo "2. 选项二"
@@ -71,8 +68,6 @@ show_menu() {
 # 主循环
 while true; do
     show_menu
-    # 清除输入缓冲区中的任何残留数据
-    read -r -t 0.1 -n 10000
     read -p "请选择一个选项: " choice
     case $choice in
         1) echo "执行了选项一";;
@@ -84,4 +79,3 @@ while true; do
         *) echo "无效选项，请重新输入";;
     esac
 done
-
