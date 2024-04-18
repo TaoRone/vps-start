@@ -11,19 +11,51 @@ fi
 
 # 放开端口函数 Define a function to open ports
 open_port() {
-    # 安装iptables持久化文件 Install iptables-persistent for saving iptables rules
+    # 安装iptables持久化文件
     apt-get update
     apt-get install -y iptables-persistent
     echo "请输入要放开的端口号: "
     read port
-    sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
-    sudo iptables -A INPUT -p udp --dport $port -j ACCEPT
-    sudo ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
-    sudo ip6tables -A INPUT -p udp --dport $port -j ACCEPT
+
+    # 检查输入是否为单个端口或连续端口范围
+    if [[ "$port" =~ ^[0-9]+$ ]]; then
+        # 单个端口
+        sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
+        sudo iptables -A INPUT -p udp --dport $port -j ACCEPT
+        sudo ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
+        sudo ip6tables -A INPUT -p udp --dport $port -j ACCEPT
+    elif [[ "$port" =~ ^[0-9]+:[0-9]+$ ]]; then
+        # 端口范围
+        IFS=':' read -ra RANGE <<< "$port"
+        for ((i=${RANGE[0]}; i<=${RANGE[1]}; i++)); do
+            sudo iptables -A INPUT -p tcp --dport $i -j ACCEPT
+            sudo iptables -A INPUT -p udp --dport $i -j ACCEPT
+            sudo ip6tables -A INPUT -p tcp --dport $i -j ACCEPT
+            sudo ip6tables -A INPUT -p udp --dport $i -j ACCEPT
+        done
+    elif [[ "$port" =~ ^[0-9]+([[:space:]]+[0-9]+)*$ ]]; then
+    # 用空格分割的多个端口
+    # 使用 tr 替换所有连续的空白字符为单个空格
+    port=$(echo $port | tr -s '[:space:]' ' ')
+    for p in $port; do
+        sudo iptables -A INPUT -p tcp --dport $p -j ACCEPT
+        sudo iptables -A INPUT -p udp --dport $p -j ACCEPT
+        sudo ip6tables -A INPUT -p tcp --dport $p -j ACCEPT
+        sudo ip6tables -A INPUT -p udp --dport $p -j ACCEPT
+    done
+else
+    echo "输入格式错误，请重新输入。"
+    return 1
+fi
+
+
+    # 保存规则
     sudo iptables-save > /etc/iptables/rules.v4
     sudo ip6tables-save > /etc/iptables/rules.v6
     echo "端口 $port 已放开，并设置为开机自动生效。"
 }
+
+
 
 
 # 显示菜单 Display menu
