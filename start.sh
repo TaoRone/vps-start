@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# 定义一个函数来放开端口
+open_port() {
+    echo "请输入要放开的端口号: "
+    read port
+    iptables -A INPUT -p tcp --dport $port -j ACCEPT
+    iptables -A INPUT -p udp --dport $port -j ACCEPT
+    ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
+    ip6tables -A INPUT -p udp --dport $port -j ACCEPT
+    iptables-save > /etc/iptables/rules.v4
+    ip6tables-save > /etc/iptables/rules.v6
+    echo "端口 $port 已放开，并设置为开机自动生效。"
+}
+
+
 # 显示菜单
 show_menu() {
     echo "1. 选项一"
@@ -25,15 +39,3 @@ while true; do
     esac
 done
 
-# 定义一个函数来放开端口
-open_port() {
-    echo "请输入要放开的端口号: "
-    read port
-    iptables -A INPUT -p tcp --dport $port -j ACCEPT
-    iptables -A INPUT -p udp --dport $port -j ACCEPT
-    ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
-    ip6tables -A INPUT -p udp --dport $port -j ACCEPT
-    iptables-save > /etc/iptables/rules.v4
-    ip6tables-save > /etc/iptables/rules.v6
-    echo "端口 $port 已放开，并设置为开机自动生效。"
-}
