@@ -6,6 +6,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+# 所有函数需要在选项之前声明
 
 
 # 放开端口函数 Define a function to open ports
