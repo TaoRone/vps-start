@@ -6,9 +6,24 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-# 安装iptables持久化文件 Install iptables-persistent for saving iptables rules
-apt-get update
-apt-get install -y iptables-persistent
+
+
+# 放开端口函数 Define a function to open ports
+open_port() {
+    # 安装iptables持久化文件 Install iptables-persistent for saving iptables rules
+    apt-get update
+    apt-get install -y iptables-persistent
+    echo "请输入要放开的端口号: "
+    read port
+    sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
+    sudo iptables -A INPUT -p udp --dport $port -j ACCEPT
+    sudo ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
+    sudo ip6tables -A INPUT -p udp --dport $port -j ACCEPT
+    sudo iptables-save > /etc/iptables/rules.v4
+    sudo ip6tables-save > /etc/iptables/rules.v6
+    echo "端口 $port 已放开，并设置为开机自动生效。"
+}
+
 
 # 显示菜单 Display menu
 show_menu() {
@@ -37,15 +52,3 @@ while true; do
     esac
 done
 
-# 放开端口函数 Define a function to open ports
-open_port() {
-    echo "请输入要放开的端口号: "
-    read port
-    sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
-    sudo iptables -A INPUT -p udp --dport $port -j ACCEPT
-    sudo ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
-    sudo ip6tables -A INPUT -p udp --dport $port -j ACCEPT
-    sudo iptables-save > /etc/iptables/rules.v4
-    sudo ip6tables-save > /etc/iptables/rules.v6
-    echo "端口 $port 已放开，并设置为开机自动生效。"
-}
