@@ -1,20 +1,16 @@
 #!/bin/bash
 
-# 定义一个函数来放开端口
-open_port() {
-    echo "请输入要放开的端口号: "
-    read port
-    iptables -A INPUT -p tcp --dport $port -j ACCEPT
-    iptables -A INPUT -p udp --dport $port -j ACCEPT
-    ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
-    ip6tables -A INPUT -p udp --dport $port -j ACCEPT
-    iptables-save > /etc/iptables/rules.v4
-    ip6tables-save > /etc/iptables/rules.v6
-    echo "端口 $port 已放开，并设置为开机自动生效。"
-}
+# 确保root用户运行 Ensure the script is run as root
+if [ "$(id -u)" != "0" ]; then
+    echo "This script must be run as root" 1>&2
+    exit 1
+fi
 
+# 安装iptables持久化文件 Install iptables-persistent for saving iptables rules
+apt-get update
+apt-get install -y iptables-persistent
 
-# 显示菜单
+# 显示菜单 Display menu
 show_menu() {
     echo "1. 选项一"
     echo "2. 选项二"
@@ -27,6 +23,8 @@ show_menu() {
 # 主循环
 while true; do
     show_menu
+    # 清除输入缓冲区中的任何残留数据
+    read -r -t 0.1 -n 10000
     read -p "请选择一个选项: " choice
     case $choice in
         1) echo "执行了选项一";;
@@ -39,3 +37,15 @@ while true; do
     esac
 done
 
+# 放开端口函数 Define a function to open ports
+open_port() {
+    echo "请输入要放开的端口号: "
+    read port
+    sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
+    sudo iptables -A INPUT -p udp --dport $port -j ACCEPT
+    sudo ip6tables -A INPUT -p tcp --dport $port -j ACCEPT
+    sudo ip6tables -A INPUT -p udp --dport $port -j ACCEPT
+    sudo iptables-save > /etc/iptables/rules.v4
+    sudo ip6tables-save > /etc/iptables/rules.v6
+    echo "端口 $port 已放开，并设置为开机自动生效。"
+}
