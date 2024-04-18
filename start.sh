@@ -20,6 +20,18 @@ add_rules() {
     ip6tables -A INPUT -p "$protocol" --dport "$dport" -j ACCEPT
 }
 
+# 处理重复规则并尝试恢复
+handle_iptables_restore() {
+    iptables-save | grep -v "^#" | sort | uniq -u > /tmp/unique_iptables.rules
+    iptables-restore < /tmp/unique_iptables.rules
+    if [ $? -ne 0 ]; then
+        echo "iptables-restore 执行失败，请检查 /tmp/unique_iptables.rules 文件中的规则。"
+        return 1
+    fi
+    echo "重复的 iptables 规则已删除，仅保留了优先度最高的规则。"
+    rm /tmp/unique_iptables.rules
+}
+
 # 放开端口函数
 open_port() {
     echo "请输入要放开的端口号: "
@@ -51,8 +63,7 @@ open_port() {
     echo "端口 $port 已放开，并设置为开机自动生效。"
 
     # 处理重复规则
-    iptables-save | grep -v "^#" | sort | uniq -u | iptables-restore
-    echo "重复的 iptables 规则已删除，仅保留了优先度最高的规则。"
+    handle_iptables_restore
 }
 
 # 显示菜单
