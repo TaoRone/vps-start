@@ -23,28 +23,28 @@ add_rules() {
 # 处理重复规则并尝试恢复
 handle_iptables_restore() {
    # Save current rules
-iptables-save > /tmp/iptables.rules
+   iptables-save > /tmp/iptables.rules
 
-# Prepare the unique rules file
-echo "*filter" > /tmp/unique_iptables.rules
-cat /tmp/iptables.rules | grep -v "^#" | sort | uniq -u | grep -v "COMMIT" >> /tmp/unique_iptables.rules
-echo "COMMIT" >> /tmp/unique_iptables.rules
+   # Prepare the unique rules file
+   echo "*filter" > /tmp/unique_iptables.rules
+   cat /tmp/iptables.rules | grep -v "^#" | sort | uniq | grep -v "COMMIT" >> /tmp/unique_iptables.rules
+   echo "COMMIT" >> /tmp/unique_iptables.rules
 
-# Convert DOS line endings to Unix if necessary
-sed -i 's/\r$//' /tmp/unique_iptables.rules
+   # Convert DOS line endings to Unix if necessary
+   sed -i 's/\r$//' /tmp/unique_iptables.rules
 
-# Restore the rules
-iptables-restore --verbose < /tmp/unique_iptables.rules
-if [ $? -ne 0 ]; then
-    echo "Failed to apply iptables rules."
-else
-    echo "Iptables rules applied successfully."
-fi
+   # Restore the rules
+   iptables-restore --verbose < /tmp/unique_iptables.rules
+   if [ $? -ne 0 ]; then
+       echo "Failed to apply iptables rules."
+   else
+       echo "Iptables rules applied successfully."
+   fi
 
-# Clean up
-rm /tmp/iptables.rules /tmp/unique_iptables.rules
-
+   # Clean up
+   rm /tmp/iptables.rules /tmp/unique_iptables.rules
 }
+
 
 # 放开端口函数
 open_port() {
