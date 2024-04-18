@@ -20,7 +20,7 @@ add_rules() {
     ip6tables -A INPUT -p "$protocol" --dport "$dport" -j ACCEPT
 }
 
-# 处理重复规则并尝试恢复
+# 处理重复规则并尝试恢复  这里暂时有问题
 handle_iptables_restore() {
    # Save current rules
    iptables-save > /tmp/iptables.rules
@@ -76,8 +76,8 @@ open_port() {
     ip6tables-save > /etc/iptables/rules.v6
     echo "端口 $port 已放开，并设置为开机自动生效。"
 
-    # 处理重复规则
-    handle_iptables_restore
+    # 处理重复规则 有问题，搁置
+    # handle_iptables_restore
 }
 
 # 显示菜单
