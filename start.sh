@@ -22,14 +22,25 @@ add_rules() {
 
 # 处理重复规则并尝试恢复
 handle_iptables_restore() {
-    iptables-save | grep -v "^#" | sort | uniq -u > /tmp/unique_iptables.rules
-    iptables-restore < /tmp/unique_iptables.rules
-    if [ $? -ne 0 ]; then
-        echo "iptables-restore 执行失败，请检查 /tmp/unique_iptables.rules 文件中的规则。"
-        return 1
-    fi
+    # 保存当前的 iptables 规则到一个临时文件
+iptables-save > /tmp/iptables.rules
+
+# 处理规则，保留必要的头部和尾部
+echo "*filter" > /tmp/unique_iptables.rules
+cat /tmp/iptables.rules | grep -v "^#" | sort | uniq -u | grep -v "COMMIT" >> /tmp/unique_iptables.rules
+echo "COMMIT" >> /tmp/unique_iptables.rules
+
+# 恢复去重后的规则
+iptables-restore < /tmp/unique_iptables.rules
+if [ $? -ne 0 ]; then
+    echo "iptables-restore 执行失败，请检查 /tmp/unique_iptables.rules 文件中的规则。"
+else
     echo "重复的 iptables 规则已删除，仅保留了优先度最高的规则。"
-    rm /tmp/unique_iptables.rules
+fi
+
+# 清理临时文件
+rm /tmp/iptables.rules /tmp/unique_iptables.rules
+
 }
 
 # 放开端口函数
